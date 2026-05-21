@@ -118,7 +118,7 @@ async function pollEvents() {
     // Обрабатываем новые события (от старых к новым)
     for (const e of newEvents.reverse()) {
       if (e.type === 'call') {
-        console.log(`📞 Звонок: ${e.name} в ${e.time}`);
+        console.log(`📞 Звонок: ${e.name} в ${e.time} | img: ${e.imgurl}`);
         const caption = `🔔 <b>Звонок!</b>\n📍 ${e.name}\n🕐 ${e.time}`;
         if (e.imgurl && !e.imgurl.includes('default.jpg')) {
           try {
