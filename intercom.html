@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Домофон">
+<meta name="theme-color" content="#0a0a0f">
+<title>Домофон</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500&family=Unbounded:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #18181f;
+    --border: rgba(255,255,255,0.07);
+    --border-active: rgba(99,210,255,0.4);
+    --text: #e8e8f0;
+    --text-dim: rgba(232,232,240,0.45);
+    --accent: #63d2ff;
+    --accent2: #7b61ff;
+    --green: #4fffb0;
+    --red: #ff4f6b;
+    --mono: 'Martian Mono', monospace;
+    --display: 'Unbounded', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── APP SHELL ── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text-dim); font-weight: 300; }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── NAV TABS ── */
+  nav {
+    display: flex;
+    padding: 10px 20px 0;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 4px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .tab:hover { color: var(--text); }
+
+  /* ── PAGES ── */
+  .page {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 20px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .page.active { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── DOOR CARDS ── */
+  .door-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .door-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(99,210,255,0.03) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .door-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .door-info { flex: 1; min-width: 0; }
+  .door-name {
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 400;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .door-id {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+  .open-btn {
+    width: 80px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border-active);
+    background: rgba(99,210,255,0.08);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .open-btn:hover { background: rgba(99,210,255,0.15); }
+  .open-btn:active { transform: scale(0.95); }
+  .open-btn.loading {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .open-btn.success {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(79,255,176,0.08);
+  }
+  .open-btn.error {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(255,79,107,0.08);
+  }
+
+  /* ── CAMERA GRID ── */
+  .cam-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .cam-thumb {
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    background: var(--bg2);
+    aspect-ratio: 16/9;
+    transition: border-color 0.2s;
+  }
+  .cam-thumb:hover { border-color: var(--border-active); }
+  .cam-thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .cam-label {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 4px 6px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.8);
+  }
+  .cam-live-badge {
+    position: absolute;
+    top: 5px; right: 5px;
+    background: var(--red);
+    color: white;
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+
+  /* ── VIDEO MODAL ── */
+  #video-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 100;
+    flex-direction: column;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+  }
+  #video-modal.open { display: flex; }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    flex-shrink: 0;
+  }
+  .modal-title {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 400;
+  }
+  .close-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #video-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+  }
+  #cam-video {
+    width: 100%;
+    max-height: 100%;
+    border-radius: 10px;
+    background: #000;
+    display: block;
+  }
+  .modal-status {
+    padding: 10px 20px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* ── EVENTS ── */
+  .event-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .event-thumb {
+    width: 56px; height: 42px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: var(--bg3);
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .event-info { flex: 1; min-width: 0; }
+  .event-name {
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+  .event-time {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  .event-badge {
+    font-size: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    margin-top: 5px;
+    display: inline-block;
+  }
+  .badge-call { background: rgba(123,97,255,0.2); color: var(--accent2); }
+  .badge-open { background: rgba(79,255,176,0.15); color: var(--green); }
+
+  /* ── SETTINGS ── */
+  .settings-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .settings-label {
+    padding: 10px 14px 6px;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .settings-row {
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .settings-row:first-of-type { border-top: none; }
+  .settings-key {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .settings-val {
+    font-size: 10px;
+    color: var(--text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .settings-input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 10px;
+    outline: none;
+  }
+  .settings-input:focus { border-color: var(--accent); }
+  .save-btn {
+    width: 100%;
+    padding: 13px;
+    background: rgba(99,210,255,0.08);
+    border: 1px solid var(--border-active);
+    border-radius: 10px;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 4px;
+  }
+  .save-btn:hover { background: rgba(99,210,255,0.15); }
+
+  /* ── LOADING / EMPTY ── */
+  .loading-state, .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+  .loading-spinner {
+    width: 24px; height: 24px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: calc(20px + var(--safe-bottom));
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    z-index: 200;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.ok { border-color: rgba(79,255,176,0.4); color: var(--green); }
+  #toast.err { border-color: rgba(255,79,107,0.4); color: var(--red); }
+
+  /* ── REFRESH BTN ── */
+  .refresh-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { color: var(--accent); border-color: var(--border-active); }
+  .icon-btn.spinning svg { animation: spin 0.8s linear infinite; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo">ДОМОФОН <span>/ ЖК</span></div>
+    <div class="status-dot" id="status-dot" title="Онлайн"></div>
+  </header>
+
+  <nav>
+    <button class="tab active" onclick="switchTab('doors')">🚪 Двери</button>
+    <button class="tab" onclick="switchTab('cameras')">📷 Камеры</button>
+    <button class="tab" onclick="switchTab('events')">📋 Журнал</button>
+    <button class="tab" onclick="switchTab('settings')">⚙️ Настройки</button>
+  </nav>
+
+  <!-- DOORS -->
+  <div class="page active" id="page-doors">
+    <div class="loading-state" id="doors-loading">
+      <div class="loading-spinner"></div>
+      загрузка дверей...
+    </div>
+    <div id="doors-list"></div>
+  </div>
+
+  <!-- CAMERAS -->
+  <div class="page" id="page-cameras">
+    <div class="loading-state" id="cams-loading">
+      <div class="loading-spinner"></div>
+      загрузка камер...
+    </div>
+    <div id="cams-grid" class="cam-grid"></div>
+  </div>
+
+  <!-- EVENTS -->
+  <div class="page" id="page-events">
+    <div class="refresh-row">
+      <span class="section-title">последние события</span>
+      <button class="icon-btn" id="refresh-events-btn" onclick="loadEvents()" title="Обновить">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+          <path d="M8 16H3v5"/>
+        </svg>
+      </button>
+    </div>
+    <div class="loading-state" id="events-loading" style="display:none">
+      <div class="loading-spinner"></div>
+    </div>
+    <div id="events-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="settings-section">
+      <div class="settings-label">Авторизация</div>
+      <div class="settings-row">
+        <span class="settings-key">Токен</span>
+        <input class="settings-input" id="input-token" type="text" placeholder="вставь свой токен" autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Подключение</div>
+      <div class="settings-row">
+        <span class="settings-key">Сервер</span>
+        <span class="settings-val" id="val-server">voip.flightdev.ru</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-key">Janus WSS</span>
+        <span class="settings-val" id="val-janus">server70.flightdev.ru:8989</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-key">API secret</span>
+        <span class="settings-val">westernITrocks</span>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveSettings()">Сохранить и перезагрузить</button>
+
+    <div class="settings-section" style="margin-top:8px">
+      <div class="settings-label">О приложении</div>
+      <div class="settings-row">
+        <span class="settings-key">Версия</span>
+        <span class="settings-val">1.0.0</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-key">Обновление</span>
+        <span class="settings-val" id="val-last-update">—</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- VIDEO MODAL -->
+<div id="video-modal">
+  <div class="modal-header">
+    <span class="modal-title" id="modal-cam-name">Камера</span>
+    <button class="close-btn" onclick="closeVideo()">✕</button>
+  </div>
+  <div id="video-container">
+    <video id="cam-video" autoplay muted playsinline controls></video>
+  </div>
+  <div class="modal-status" id="modal-status">подключение...</div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ──
+const BASE = 'https://intercom-proxy-30wm.onrender.com';
+let TOKEN = localStorage.getItem('intercom_token') || '';
+
+// ── INIT ──
+document.getElementById('input-token').value = TOKEN;
+if (TOKEN) {
+  loadDoors();
+  loadCameras();
+  loadEvents();
+} else {
+  document.getElementById('doors-loading').innerHTML = '<div style="color:var(--text-dim);font-size:11px;letter-spacing:.06em">Укажи токен в настройках ⚙️</div>';
+  document.getElementById('cams-loading').innerHTML = '<div style="color:var(--text-dim);font-size:11px;letter-spacing:.06em">Укажи токен в настройках ⚙️</div>';
+}
+
+// ── TABS ──
+function switchTab(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── API ──
+async function api(path) {
+  const url = `${BASE}/api/${path}&token=${TOKEN}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+// ── DOORS ──
+const DOOR_ICONS = { 54: '🚪', 57: '🌳', 51: '🚧', 52: '🚧', 53: '🚧' };
+const DOOR_NAMES_OVERRIDE = { 54: 'Вход с улицы', 57: 'Вход со двора', 51: 'Калитка 1', 52: 'Калитка 2', 53: 'Калитка 3' };
+
+async function loadDoors() {
+  try {
+    const data = await api('doorlist?');
+    const list = document.getElementById('doors-list');
+    document.getElementById('doors-loading').style.display = 'none';
+    const doors = data.doorarray || data.doors || [];
+    if (!doors.length) {
+      list.innerHTML = '<div class="empty-state">Нет дверей</div>';
+      return;
+    }
+    list.innerHTML = '';
+    doors.forEach(d => {
+      const id = parseInt(d.doorid || d.id);
+      const name = DOOR_NAMES_OVERRIDE[id] || d.doorname || d.name || `Дверь ${id}`;
+      const icon = DOOR_ICONS[id] || '🚪';
+      const card = document.createElement('div');
+      card.className = 'door-card';
+      card.innerHTML = `
+        <div class="door-icon">${icon}</div>
+        <div class="door-info">
+          <div class="door-name">${name}</div>
+          <div class="door-id">ID: ${id}</div>
+        </div>
+        <button class="open-btn" id="btn-${id}" onclick="openDoor(${id})">Открыть</button>
+      `;
+      list.appendChild(card);
+    });
+  } catch(e) {
+    document.getElementById('doors-loading').innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+  }
+}
+
+async function openDoor(id) {
+  const btn = document.getElementById('btn-' + id);
+  btn.classList.add('loading');
+  btn.textContent = '...';
+  try {
+    await fetch(`${BASE}/api/sendtask?token=${TOKEN}&doorid=${id}&task=10`);
+    btn.classList.remove('loading');
+    btn.classList.add('success');
+    btn.textContent = '✓ OK';
+    showToast('✓ Дверь открыта', 'ok');
+    setTimeout(() => {
+      btn.classList.remove('success');
+      btn.textContent = 'Открыть';
+    }, 2500);
+  } catch(e) {
+    btn.classList.remove('loading');
+    btn.classList.add('error');
+    btn.textContent = 'Ошибка';
+    showToast('✕ Ошибка', 'err');
+    setTimeout(() => {
+      btn.classList.remove('error');
+      btn.textContent = 'Открыть';
+    }, 2500);
+  }
+}
+
+// ── CAMERAS ──
+async function loadCameras() {
+  try {
+    const data = await api('camlist?');
+    const grid = document.getElementById('cams-grid');
+    document.getElementById('cams-loading').style.display = 'none';
+    const cams = data.camarray || [];
+    if (!cams.length) {
+      grid.innerHTML = '<div class="empty-state">Нет камер</div>';
+      return;
+    }
+    grid.innerHTML = '';
+    cams.forEach(c => {
+      const thumb = document.createElement('div');
+      thumb.className = 'cam-thumb';
+      thumb.onclick = () => openCamera(c);
+      const imgUrl = BASE + '/HLS/' + c.camid + '.jpg?t=' + Date.now();
+      thumb.innerHTML = `
+        <img src="${imgUrl}" alt="${c.camname}" onerror="this.style.opacity=0.2">
+        <div class="cam-label">${c.camname}</div>
+        <div class="cam-live-badge">LIVE</div>
+      `;
+      grid.appendChild(thumb);
+    });
+    // Auto-refresh previews every 10s
+    setInterval(() => {
+      grid.querySelectorAll('img').forEach((img, i) => {
+        const cam = cams[i];
+        if (cam) img.src = BASE + '/HLS/' + cam.camid + '.jpg?t=' + Date.now();
+      });
+    }, 10000);
+  } catch(e) {
+    document.getElementById('cams-loading').innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+  }
+}
+
+let hlsInstance = null;
+
+function openCamera(cam) {
+  document.getElementById('modal-cam-name').textContent = cam.camname;
+  document.getElementById('video-modal').classList.add('open');
+  document.getElementById('modal-status').textContent = 'подключение...';
+  const video = document.getElementById('cam-video');
+
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+  if (Hls.isSupported()) {
+    hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true });
+    hlsInstance.loadSource(cam.hls);
+    hlsInstance.attachMedia(video);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play();
+      document.getElementById('modal-status').textContent = '● прямой эфир · HLS';
+    });
+    hlsInstance.on(Hls.Events.ERROR, (_, data) => {
+      if (data.fatal) {
+        document.getElementById('modal-status').textContent = '⚠ ошибка потока';
+      }
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Native HLS (Safari/iOS)
+    video.src = cam.hls;
+    video.play();
+    document.getElementById('modal-status').textContent = '● прямой эфир · нативный HLS';
+  } else {
+    document.getElementById('modal-status').textContent = '⚠ HLS не поддерживается';
+  }
+}
+
+function closeVideo() {
+  document.getElementById('video-modal').classList.remove('open');
+  const video = document.getElementById('cam-video');
+  video.pause();
+  video.src = '';
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+}
+
+// ── EVENTS ──
+async function loadEvents() {
+  const btn = document.getElementById('refresh-events-btn');
+  btn.classList.add('spinning');
+  document.getElementById('events-loading').style.display = 'flex';
+  try {
+    const data = await api('events?');
+    const list = document.getElementById('events-list');
+    list.innerHTML = '';
+    const events = data.eventarray || [];
+    if (!events.length) {
+      list.innerHTML = '<div class="empty-state">Нет событий</div>';
+      return;
+    }
+    events.slice(0, 40).forEach(e => {
+      const item = document.createElement('div');
+      item.className = 'event-item';
+      const isCall = e.type === 'call';
+      const badgeClass = isCall ? 'badge-call' : 'badge-open';
+      const badgeText = isCall ? 'ЗВОНОК' : 'ОТКРЫТИЕ';
+      const rawImg = e.imgurl || '';
+      const imgSrc = rawImg && !rawImg.includes('default.jpg')
+        ? rawImg.replace('https://voip.flightdev.ru', BASE)
+        : '';
+      item.innerHTML = `
+        ${imgSrc ? `<img class="event-thumb" src="${imgSrc}" onerror="this.style.display='none'">` : '<div class="event-thumb"></div>'}
+        <div class="event-info">
+          <div class="event-name">${e.name || '—'}</div>
+          <div class="event-time">${e.time || ''}</div>
+          <span class="event-badge ${badgeClass}">${badgeText}</span>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+    document.getElementById('val-last-update').textContent = new Date().toLocaleTimeString('ru');
+  } catch(e) {
+    showToast('Ошибка загрузки журнала', 'err');
+  } finally {
+    document.getElementById('events-loading').style.display = 'none';
+    btn.classList.remove('spinning');
+  }
+}
+
+// ── SETTINGS ──
+function saveSettings() {
+  TOKEN = document.getElementById('input-token').value.trim();
+  localStorage.setItem('intercom_token', TOKEN);
+  showToast('✓ Сохранено', 'ok');
+  setTimeout(() => location.reload(), 800);
+}
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2500);
+}
+
+// ── POLL EVENTS (каждые 30 сек пока страница открыта) ──
+setInterval(() => {
+  if (TOKEN && document.getElementById('page-events').classList.contains('active')) {
+    loadEvents();
+  }
+}, 30000);
+</script>
+</body>
+</html>

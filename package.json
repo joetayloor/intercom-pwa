@@ -1,0 +1,12 @@
+{
+  "name": "intercom-proxy",
+  "version": "1.0.0",
+  "description": "Proxy for intercom PWA",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
