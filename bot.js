@@ -66,11 +66,10 @@ function httpsPost(hostname, path, body) {
 // ── Download image buffer directly ──
 function downloadImage(imgurl) {
   return new Promise((resolve, reject) => {
-    const proxyUrl = imgurl.replace('https://voip.flightdev.ru', 'https://intercom-proxy-30wm.onrender.com');
-const urlObj = new URL(proxyUrl);
-httpsLib.get({
-  hostname: urlObj.hostname,
-  path: urlObj.pathname + urlObj.search,
+    const urlObj = new URL(imgurl);
+    httpsLib.get({
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
       port: 443,
       headers: {
         'User-Agent': 'flightintercom1/5 CFNetwork/1496.0.7 Darwin/23.5.0',
@@ -187,9 +186,27 @@ async function pollEvents() {
         const caption = `🔔 <b>Звонок!</b>\n📍 ${e.name}\n🕐 ${e.time}`;
         const keyboard = smartKeyboard(e.name);
 
-        if (e.imgurl && !e.imgurl.includes('default.jpg')) {
+        // Ждём 5 секунд — сервер может ещё не сохранил фото
+        await new Promise(r => setTimeout(r, 5000));
+
+        // Перепроверяем событие — возможно imgurl обновился
+        let imgurl = e.imgurl;
+        if (!imgurl || imgurl.includes('default.jpg')) {
           try {
-            const buffer = await downloadImage(e.imgurl);
+            const fresh = await httpsGet(`${API_BASE}/api/events?token=${API_TOKEN}`);
+            const freshEvent = (fresh?.eventarray || []).find(fe => fe.eventid === e.eventid);
+            if (freshEvent && freshEvent.imgurl && !freshEvent.imgurl.includes('default.jpg')) {
+              imgurl = freshEvent.imgurl;
+              console.log(`📸 Обновлённый imgurl: ${imgurl}`);
+            }
+          } catch(err) {
+            console.error('Ошибка перепроверки:', err.message);
+          }
+        }
+
+        if (imgurl && !imgurl.includes('default.jpg')) {
+          try {
+            const buffer = await downloadImage(imgurl);
             console.log(`📸 Скачал фото ${buffer.length} байт`);
             await Promise.all(CHAT_IDS.map(id => sendPhotoBuffer(id, buffer, caption, keyboard)));
           } catch(err) {
