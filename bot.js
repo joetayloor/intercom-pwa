@@ -5,7 +5,6 @@ const httpsLib = require('https');
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const CHAT_IDS = (process.env.CHAT_ID || '').split(',').map(id => id.trim()).filter(Boolean);
 const API_TOKEN = process.env.API_TOKEN || '';
-const PROXY_URL = process.env.PROXY_URL || 'https://intercom-proxy-30wm.onrender.com';
 const API_BASE = 'https://voip.flightdev.ru';
 const POLL_INTERVAL = 4000;
 
@@ -16,6 +15,18 @@ const DOORS = {
   52: 'Калитка 2',
   53: 'Калитка 3',
 };
+
+// Матчинг названия двери → doorid
+const DOOR_NAME_TO_ID = {
+  'вход с улицы': 54,
+  'вход со двора': 57,
+  'калитка 1': 51,
+  'калитка 2': 52,
+  'калитка 3': 53,
+};
+
+// Защита от спама открытий
+const openLocks = {};
 
 let lastEventId = null;
 let isFirstRun = true;
@@ -38,8 +49,7 @@ function httpsPost(hostname, path, body) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
     const options = {
-      hostname, path,
-      method: 'POST', port: 443,
+      hostname, path, method: 'POST', port: 443,
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
     };
     const req = httpsLib.request(options, res => {
@@ -53,13 +63,19 @@ function httpsPost(hostname, path, body) {
   });
 }
 
-// ── Download image as buffer via proxy ──
+// ── Download image buffer directly ──
 function downloadImage(imgurl) {
-  const proxyUrl = imgurl.replace('https://voip.flightdev.ru', PROXY_URL);
-  const urlObj = new URL(proxyUrl);
   return new Promise((resolve, reject) => {
-    httpsLib.get({ hostname: urlObj.hostname, path: urlObj.pathname + urlObj.search, port: 443,
-      headers: { 'User-Agent': 'flightintercom1/5' } }, res => {
+    const urlObj = new URL(imgurl);
+    httpsLib.get({
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      port: 443,
+      headers: {
+        'User-Agent': 'flightintercom1/5 CFNetwork/1496.0.7 Darwin/23.5.0',
+        'Accept': '*/*',
+      }
+    }, res => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
       res.on('end', () => resolve(Buffer.concat(chunks)));
@@ -115,12 +131,18 @@ function answerCallback(callback_query_id, text) {
   return tgCall('answerCallbackQuery', { callback_query_id, text });
 }
 
-// ── Door keyboard ──
-function doorsKeyboard() {
-  const buttons = Object.entries(DOORS).map(([id, name]) => ([{
-    text: `🔓 ${name}`, callback_data: `open_${id}`
-  }]));
-  return { inline_keyboard: buttons };
+// ── Smart keyboard — одна кнопка для места звонка + все остальные ──
+function smartKeyboard(eventName) {
+  const nameLower = (eventName || '').toLowerCase();
+  const matchedId = DOOR_NAME_TO_ID[nameLower];
+
+  if (matchedId) {
+    // Показываем только кнопку той двери откуда звонят
+    return { inline_keyboard: [[{ text: `🔓 Открыть — ${DOORS[matchedId]}`, callback_data: `open_${matchedId}` }]] };
+  }
+
+  // Если не распознали — все двери
+  return { inline_keyboard: Object.entries(DOORS).map(([id, name]) => ([{ text: `🔓 ${name}`, callback_data: `open_${id}` }])) };
 }
 
 // ── Open door ──
@@ -160,9 +182,9 @@ async function pollEvents() {
 
     for (const e of newEvents.reverse()) {
       if (e.type === 'call') {
-        cconsole.log(`📞 Звонок: ${e.name} в ${e.time} | doorid: ${e.doorid} | img: ${e.imgurl}`);
+        console.log(`📞 Звонок: ${e.name} в ${e.time} | doorid: ${e.doorid} | img: ${e.imgurl}`);
         const caption = `🔔 <b>Звонок!</b>\n📍 ${e.name}\n🕐 ${e.time}`;
-        const keyboard = doorsKeyboard();
+        const keyboard = smartKeyboard(e.name);
 
         if (e.imgurl && !e.imgurl.includes('default.jpg')) {
           try {
@@ -209,9 +231,19 @@ async function pollTelegram() {
         if (cbData.startsWith('open_')) {
           const doorId = parseInt(cbData.replace('open_', ''));
           const doorName = DOORS[doorId] || `Дверь ${doorId}`;
+
+          // Защита от спама
+          if (openLocks[doorId]) {
+            await answerCallback(cb.id, '⏳ Уже открывается...');
+            continue;
+          }
+          openLocks[doorId] = true;
+          setTimeout(() => { delete openLocks[doorId]; }, 5000);
+
           console.log(`🔓 ${fromId} открывает дверь ${doorId} (${doorName})`);
           await answerCallback(cb.id, '⏳ Открываю...');
           const ok = await openDoor(doorId);
+
           if (ok) {
             await answerCallback(cb.id, `✅ ${doorName} открыта!`);
             await sendMessage(`✅ <b>${doorName}</b> — открыта`);
@@ -232,7 +264,9 @@ async function pollTelegram() {
         }
 
         if (text === '/start' || text === '/doors') {
-          await sendMessageTo(fromId, '🚪 <b>Выбери дверь для открытия:</b>', { reply_markup: doorsKeyboard() });
+          await sendMessageTo(fromId, '🚪 <b>Выбери дверь для открытия:</b>', {
+            reply_markup: { inline_keyboard: Object.entries(DOORS).map(([id, name]) => ([{ text: `🔓 ${name}`, callback_data: `open_${id}` }])) }
+          });
         } else if (text === '/status') {
           await sendMessageTo(fromId, `✅ Бот работает\n📡 Опрос каждые ${POLL_INTERVAL/1000} сек\n👥 Пользователей: ${CHAT_IDS.length}\n🆔 Последнее событие: ${lastEventId || 'нет'}`);
         }
