@@ -160,7 +160,7 @@ async function pollEvents() {
 
     for (const e of newEvents.reverse()) {
       if (e.type === 'call') {
-        console.log(`📞 Звонок: ${e.name} в ${e.time} | img: ${e.imgurl}`);
+        cconsole.log(`📞 Звонок: ${e.name} в ${e.time} | doorid: ${e.doorid} | img: ${e.imgurl}`);
         const caption = `🔔 <b>Звонок!</b>\n📍 ${e.name}\n🕐 ${e.time}`;
         const keyboard = doorsKeyboard();
 
