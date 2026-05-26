@@ -180,14 +180,16 @@ async function pollEvents() {
 
     if (!newEvents.length) return;
 
+    lastEventId = latestId; // обновляем сразу чтобы не поймать дважды
+
     for (const e of newEvents.reverse()) {
       if (e.type === 'call') {
         console.log(`📞 Звонок: ${e.name} в ${e.time} | doorid: ${e.doorid} | img: ${e.imgurl}`);
         const caption = `🔔 <b>Звонок!</b>\n📍 ${e.name}\n🕐 ${e.time}`;
         const keyboard = smartKeyboard(e.name);
 
-        // Ждём 5 секунд — сервер может ещё не сохранил фото
-        await new Promise(r => setTimeout(r, 5000));
+        // Ждём 2 секунд — сервер может ещё не сохранил фото
+        await new Promise(r => setTimeout(r, 2000));
 
         // Перепроверяем событие — возможно imgurl обновился
         let imgurl = e.imgurl;
@@ -219,7 +221,6 @@ async function pollEvents() {
       }
     }
 
-    lastEventId = latestId;
   } catch (e) {
     console.error('Poll error:', e.message);
   }
