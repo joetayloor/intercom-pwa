@@ -66,10 +66,11 @@ function httpsPost(hostname, path, body) {
 // ── Download image buffer directly ──
 function downloadImage(imgurl) {
   return new Promise((resolve, reject) => {
-    const urlObj = new URL(imgurl);
-    httpsLib.get({
-      hostname: urlObj.hostname,
-      path: urlObj.pathname + urlObj.search,
+    const proxyUrl = imgurl.replace('https://voip.flightdev.ru', 'https://intercom-proxy-30wm.onrender.com');
+const urlObj = new URL(proxyUrl);
+httpsLib.get({
+  hostname: urlObj.hostname,
+  path: urlObj.pathname + urlObj.search,
       port: 443,
       headers: {
         'User-Agent': 'flightintercom1/5 CFNetwork/1496.0.7 Darwin/23.5.0',
