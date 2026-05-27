@@ -685,7 +685,7 @@ async function loadCameras() {
       const thumb = document.createElement('div');
       thumb.className = 'cam-thumb';
       thumb.onclick = () => openCamera(c);
-      const imgUrl = BASE + '/HLS/' + c.camid + '.jpg?t=' + Date.now();
+     const imgUrl = 'https://voip.flightdev.ru/HLS/' + c.camid + '.jpg?t=' + Date.now();
       thumb.innerHTML = `
         <img src="${imgUrl}" alt="${c.camname}" onerror="this.style.opacity=0.2">
         <div class="cam-label">${c.camname}</div>
@@ -697,7 +697,7 @@ async function loadCameras() {
     setInterval(() => {
       grid.querySelectorAll('img').forEach((img, i) => {
         const cam = cams[i];
-        if (cam) img.src = BASE + '/HLS/' + cam.camid + '.jpg?t=' + Date.now();
+        if (cam) img.src = 'https://voip.flightdev.ru/HLS/' + cam.camid + '.jpg?t=' + Date.now();
       });
     }, 10000);
   } catch(e) {
