@@ -300,7 +300,9 @@ async function pollTelegram() {
 http.createServer((req, res) => {
   res.writeHead(200);
   res.end('OK');
-}).listen(process.env.PORT || 3000);
+}).listen(process.env.PORT || 3000, '0.0.0.0', () => {
+  console.log(`✓ HTTP сервер запущен на порту ${process.env.PORT || 3000}`);
+});
 
 // ── Main loop ──
 console.log('🤖 Запускаю домофон-бота...');
