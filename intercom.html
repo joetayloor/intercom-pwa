@@ -672,7 +672,8 @@ async function openDoor(id) {
 // ── CAMERAS ──
 async function loadCameras() {
   try {
-    const data = await api('camlist?');
+    const r = await fetch(`${BASE}/api/camlist?token=${TOKEN}`);
+const data = await r.json();
     const grid = document.getElementById('cams-grid');
     document.getElementById('cams-loading').style.display = 'none';
     const cams = data.camarray || [];
