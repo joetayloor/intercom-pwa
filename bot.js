@@ -318,7 +318,8 @@ async function pollTelegram() {
           setTimeout(() => { delete openLocks[doorId]; }, 5000);
           await answerCallback(cb.id, '⏳ Открываю...');
           const ok = await openDoor(doorId);
-          if (ok) {
+          console.log(`🚪 openDoor(${doorId}) результат: ${ok}`);
+            if (ok) {
             await answerCallback(cb.id, `✅ ${doorName} открыта!`);
             await sendMessage(`✅ <b>${doorName}</b> — открыта`);
           } else {
