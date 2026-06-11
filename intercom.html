@@ -624,7 +624,7 @@ async function loadDoors() {
     list.innerHTML = '';
     doors.forEach(d => {
       const id = parseInt(d.doorid || d.id);
-      const name = DOOR_NAMES_OVERRIDE[id] || d.doorname || d.name || `Дверь ${id}`;
+      const name = DOOR_NAMES_OVERRIDE[id] || d.description || d.doorname || d.name || `Дверь ${id}`;
       const icon = DOOR_ICONS[id] || '🚪';
       const card = document.createElement('div');
       card.className = 'door-card';
