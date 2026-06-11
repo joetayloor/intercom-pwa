@@ -6,7 +6,7 @@ const fs = require('fs');
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const CHAT_IDS = (process.env.CHAT_ID || '').split(',').map(id => id.trim()).filter(Boolean);
 const API_TOKEN = process.env.API_TOKEN || '';
-const PROXY_URL = process.env.PROXY_URL || 'https://intercom-pwa-production.up.railway.app';
+const PROXY_URL = process.env.PROXY_URL || 'https://intercom-proxy-30wm.onrender.com';
 const API_BASE = 'https://voip.flightdev.ru';
 const POLL_INTERVAL = 4000;
 const STATE_FILE = '/tmp/intercom_state.json';
@@ -68,7 +68,7 @@ loadState();
 // ── HTTP helpers ──
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
-    httpsLib.get(url, { headers: { 'User-Agent': 'flightintercom1/5 CFNetwork/1496.0.7 Darwin/23.5.0' } }, res => {
+    httpsLib.get(url, { headers: { 'User-Agent': 'flightintercom1/8 CFNetwork/1496.0.7 Darwin/23.5.0' } }, res => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(null); } });
@@ -102,7 +102,7 @@ function downloadImage(imgurl) {
       hostname: urlObj.hostname,
       path: urlObj.pathname + urlObj.search,
       port: 443,
-      headers: { 'User-Agent': 'flightintercom1/5 CFNetwork/1496.0.7 Darwin/23.5.0', 'Accept': '*/*' }
+      headers: { 'User-Agent': 'flightintercom1/8 CFNetwork/1496.0.7 Darwin/23.5.0', 'Accept': '*/*' }
     }, res => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
@@ -203,9 +203,9 @@ function settingsText() {
 
 // ── Open door ──
 async function openDoor(doorId) {
-  const url = `${API_BASE}/api/sendtask?token=${API_TOKEN}&doorid=${doorId}&task=10`;
+  const url = `${API_BASE}/api/iosv2/sendtask?token=${API_TOKEN}&doorid=${doorId}&task=10`;
   return new Promise((resolve) => {
-    httpsLib.get(url, { headers: { 'User-Agent': 'flightintercom1/5' } }, res => {
+    httpsLib.get(url, { headers: { 'User-Agent': 'flightintercom1/8' } }, res => {
       resolve(res.statusCode === 200);
     }).on('error', () => resolve(false));
   });
@@ -214,7 +214,7 @@ async function openDoor(doorId) {
 // ── Poll events ──
 async function pollEvents() {
   try {
-    const data = await httpsGet(`${API_BASE}/api/events?token=${API_TOKEN}`);
+    const data = await httpsGet(`${API_BASE}/api/iosv2/events?token=${API_TOKEN}`);
     if (!data || !data.eventarray || !data.eventarray.length) return;
 
     const events = data.eventarray;
@@ -261,7 +261,7 @@ async function pollEvents() {
         let imgurl = e.imgurl;
         if (!imgurl || imgurl.includes('default.jpg')) {
           try {
-            const fresh = await httpsGet(`${API_BASE}/api/events?token=${API_TOKEN}`);
+            const fresh = await httpsGet(`${API_BASE}/api/iosv2/events?token=${API_TOKEN}`);
             const freshEvent = (fresh?.eventarray || []).find(fe => fe.eventid === e.eventid);
             if (freshEvent?.imgurl && !freshEvent.imgurl.includes('default.jpg')) {
               imgurl = freshEvent.imgurl;
