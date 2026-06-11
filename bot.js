@@ -114,7 +114,7 @@ function downloadImage(imgurl) {
 function sendPhotoBuffer(chatId, buffer, caption, keyboard) {
   return new Promise((resolve, reject) => {
     const boundary = 'Boundary' + Date.now();
-    const keyboardStr = JSON.stringify(keyboard);
+    const keyboardStr = JSON.stringify(keybo
     const body = Buffer.concat([
       Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`),
       Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`),
@@ -203,7 +203,7 @@ function settingsText() {
 
 // ── Open door ──
 async function openDoor(doorId) {
-  const url = `${API_BASE}/api/iosv2/sendtask?token=${API_TOKEN}&doorid=${doorId}&task=10`;
+  const url = `${API_BASE}/api/sendtask?token=${API_TOKEN}&doorid=${doorId}&task=10`;
   return new Promise((resolve) => {
     httpsLib.get(url, { headers: { 'User-Agent': 'flightintercom1/8' } }, res => {
       resolve(res.statusCode === 200);
