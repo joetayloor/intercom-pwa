@@ -648,7 +648,7 @@ async function openDoor(id) {
   btn.classList.add('loading');
   btn.textContent = '...';
   try {
-    await fetch(`${BASE}/api/iosv2/sendtask?token=${TOKEN}&doorid=${id}&task=10`);
+    await fetch(`${BASE}/api/sendtask?token=${TOKEN}&doorid=${id}&task=10`);
     btn.classList.remove('loading');
     btn.classList.add('success');
     btn.textContent = '✓ OK';
