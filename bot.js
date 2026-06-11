@@ -301,10 +301,11 @@ async function pollTelegram() {
       tgOffset = update.update_id + 1;
 
       // ── Callback кнопки ──
-      if (update.callback_query) {
-        const cb = update.callback_query;
-        const cbData = cb.data;
-        const fromId = cb.from.id.toString();
+     if (update.callback_query) {
+  console.log(`📲 Callback: ${JSON.stringify(update.callback_query.data)} от ${update.callback_query.from.id}`);
+  const cb = update.callback_query;
+  const cbData = cb.data;
+  const fromId = cb.from.id.toString();
 
         if (!CHAT_IDS.includes(fromId)) { await answerCallback(cb.id, '❌ Нет доступа'); continue; }
 
